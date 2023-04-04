@@ -1,9 +1,10 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Platform } from "react-native";
 import { useState, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as MediaLibrary from "expo-media-library";
 import { captureRef } from "react-native-view-shot";
+import domtoimage from 'dom-to-image';
 
 import Button from "./components/Button";
 import ImageViewer from "./components/ImageViewer";
@@ -18,7 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 const PlaceholderImage = require("./assets/images/background-image.png");
 
 export default function App() {
-  const [status, requestPermission] = MediaLibrary.usePermissions();
+  const [permissionsStatus, requestPermission] = MediaLibrary.usePermissions();
   const [pickedEmoji, setPickedEmoji] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [showAppOptions, setShowAppOptions] = useState(false);
@@ -26,11 +27,11 @@ export default function App() {
 
   const imageRef = useRef();
 
-  if (status === null) {
+  if (permissionsStatus === null) {
     requestPermission();
   }
 
-  
+
 
   const onReset = () => {
     setShowAppOptions(false);
@@ -41,18 +42,36 @@ export default function App() {
   };
 
   const onSaveImageAsync = async () => {
-    try {
-      const localUri = await captureRef(imageRef, {
-        height: 440,
-        quality: 1,
-      });
-
-      await MediaLibrary.saveToLibraryAsync(localUri);
-      if (localUri) {
-        alert("Saved!");
+    if (Platform.OS != "web") {
+      try {
+        const localUri = await captureRef(imageRef, {
+          height: 440,
+          quality: 1,
+        });
+  
+        await MediaLibrary.saveToLibraryAsync(localUri);
+        if (localUri) {
+          alert("Saved!");
+        }
+      } catch (e) {
+        console.log(e);
       }
-    } catch (e) {
-      console.log(e);
+    } else{
+      domtoimage
+        .toJpeg(imageRef.current, { 
+          quality: 0.95,
+          width: 320,
+          height: 440,
+        })
+        .then(dataUrl => {
+          let link = document.createElement('a');
+          link.download = 'my-image-name.jpeg';
+          link.href = dataUrl;
+          link.click();
+        })
+        .catch(error => {
+          console.error('oops, something went wrong!', error);
+        })
     }
   };
 
